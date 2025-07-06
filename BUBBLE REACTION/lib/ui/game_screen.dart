@@ -33,6 +33,33 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Game'),
+        content: const Text('Are you sure you want to exit the game?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  void _showExitDialog() async {
+    final shouldExit = await _onWillPop();
+    if (shouldExit && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   void _handleCellTap(int row, int col) {
     setState(() {
       _game.makeMove(row, col);
@@ -60,9 +87,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildPlayerCard(int playerIdx, Alignment alignment) {
-    final isCurrent = _game.gameState.currentPlayer.id == playerIdx;
+    final isCurrent = _game.currentPlayer.id == playerIdx;
     final orbCount = _game.playerOrbCounts[playerIdx] ?? 0;
-    final isEliminated = !_game.gameState.players[playerIdx].isActive;
+    final isEliminated = !_game.players[playerIdx].isActive;
     return Align(
       alignment: alignment,
       child: AnimatedContainer(
@@ -173,181 +200,186 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentPlayer = _game.gameState.currentPlayer;
+    final currentPlayer = _game.currentPlayer;
     final gridBorder = _playerColors[currentPlayer.id].withOpacity(0.7);
     final gridShadow = _playerColors[currentPlayer.id].withOpacity(0.25);
-    return Scaffold(
-      backgroundColor: const Color(0xFF181A20),
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
         backgroundColor: const Color(0xFF181A20),
-        elevation: 0,
-        title: Text(
-          'BUBBLE REACTION',
-          style: TextStyle(
-            color: const Color(0xFF00E6FB),
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-            letterSpacing: 1.5,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF181A20),
+          elevation: 0,
+          centerTitle: true,
+          title: const Text(
+            'BUBBLE REACTION',
+            style: TextStyle(
+              color: Color(0xFF00E6FB),
+              fontWeight: FontWeight.w900,
+              fontSize: 22,
+              letterSpacing: 1.5,
+            ),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.exit_to_app, color: Colors.white70),
+              onPressed: _showExitDialog,
+              tooltip: 'Exit Game',
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white70),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ..._buildDynamicPlayerCards(),
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 32),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF23252B),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: gridBorder, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: gridShadow,
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: AspectRatio(
-                aspectRatio: _game.colCount / _game.rowCount,
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: _game.colCount,
-                    crossAxisSpacing: 3,
-                    mainAxisSpacing: 3,
-                  ),
-                  itemCount: _game.rowCount * _game.colCount,
-                  itemBuilder: (context, index) {
-                    final row = index ~/ _game.colCount;
-                    final col = index % _game.colCount;
-                    final playerId = _game.getCellPlayer(row, col);
-                    final orbCount = _game.getCellCount(row, col);
-                    return GestureDetector(
-                      onTap: _game.getWinnerId() == null &&
-                             (playerId == null || playerId == currentPlayer.id) &&
-                             _game.gameState.currentPlayer.isActive
-                          ? () => _handleCellTap(row, col)
-                          : null,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.white12,
-                            width: 1.2,
+        body: Stack(
+          children: [
+            ..._buildDynamicPlayerCards(),
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 32),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF23252B),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: gridBorder, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: gridShadow,
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: AspectRatio(
+                  aspectRatio: _game.colCount / _game.rowCount,
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _game.colCount,
+                      crossAxisSpacing: 3,
+                      mainAxisSpacing: 3,
+                    ),
+                    itemCount: _game.rowCount * _game.colCount,
+                    itemBuilder: (context, index) {
+                      final row = index ~/ _game.colCount;
+                      final col = index % _game.colCount;
+                      final playerId = _game.getCellPlayer(row, col);
+                      final orbCount = _game.getCellCount(row, col);
+                      return GestureDetector(
+                        onTap: _game.getWinnerId() == null &&
+                               (playerId == null || playerId == currentPlayer.id) &&
+                               _game.currentPlayer.isActive
+                            ? () => _handleCellTap(row, col)
+                            : null,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white12,
+                              width: 1.2,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: () {
-                            if (orbCount == 1) {
-                              // Centered single orb
-                              return Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                          child: Center(
+                            child: () {
+                              if (orbCount == 1) {
+                                // Centered single orb
+                                return Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else if (orbCount == 2) {
+                                // Two orbs side by side
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(2, (i) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                                    child: Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )),
+                                );
+                              } else if (orbCount == 3) {
+                                // Triangle: 1 on top, 2 on bottom
+                                return Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      margin: const EdgeInsets.only(bottom: 2),
+                                      decoration: BoxDecoration(
+                                        color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: List.generate(2, (i) => Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                                        child: Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )),
                                     ),
                                   ],
-                                ),
-                              );
-                            } else if (orbCount == 2) {
-                              // Two orbs side by side
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: List.generate(2, (i) => Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                                  child: Container(
-                                    width: 14,
-                                    height: 14,
-                                    decoration: BoxDecoration(
-                                      color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )),
-                              );
-                            } else if (orbCount == 3) {
-                              // Triangle: 1 on top, 2 on bottom
-                              return Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    margin: const EdgeInsets.only(bottom: 2),
-                                    decoration: BoxDecoration(
-                                      color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: List.generate(2, (i) => Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                                      child: Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )),
-                                  ),
-                                ],
-                              );
-                            } else {
-                              return null;
-                            }
-                          }(),
+                                );
+                              } else {
+                                return null;
+                              }
+                            }(),
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

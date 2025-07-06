@@ -1,6 +1,5 @@
 import 'player.dart';
 import 'cell.dart';
-import 'game_state.dart';
 
 /// Main controller for the Chain Reaction game logic.
 class ChainReactionGame {
@@ -8,7 +7,6 @@ class ChainReactionGame {
   static const int cols = 6;
   late List<List<Cell>> board;
   final List<Player> players;
-  GameState gameState;
 
   /// Tracks the number of orbs each player owns.
   final Map<int, int> playerOrbCounts = {};
@@ -16,21 +14,51 @@ class ChainReactionGame {
   int movesMade = 0;
   final Set<int> playersMoved = {};
 
+  // Migrate GameState fields
+  int currentPlayerIndex = 0;
+  bool _isFinished = false;
+
   ChainReactionGame({
     int? rowsOverride,
     int? colsOverride,
     required List<String> playerColors,
   })  : players = List.generate(
-            playerColors.length, 
-            (i) => Player(id: i, color: playerColors[i])
-        ),
-        gameState = GameState(
-            players: List.generate(
-                playerColors.length, 
-                (i) => Player(id: i, color: playerColors[i])
-            )
+          playerColors.length,
+          (i) => Player(id: i, color: playerColors[i]),
         ) {
     _initializeBoard(rowsOverride, colsOverride);
+    _initializePlayerOrbCounts();
+  }
+
+  Player get currentPlayer => players[currentPlayerIndex];
+  bool isGameFinished() => _isFinished;
+
+  void finishGame(int winnerId) {
+    _isFinished = true;
+  }
+
+  void nextPlayer() {
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+  }
+
+  void resetGame() {
+    // Reset board
+    for (int r = 0; r < rowCount; r++) {
+      for (int c = 0; c < colCount; c++) {
+        board[r][c].reset();
+      }
+    }
+    // Reset players
+    for (var player in players) {
+      player.reset();
+    }
+    // Reset game state
+    currentPlayerIndex = 0;
+    _isFinished = false;
+    // Reset counters
+    movesMade = 0;
+    playersMoved.clear();
+    // Reset orb counts
     _initializePlayerOrbCounts();
   }
 
@@ -85,7 +113,7 @@ class ChainReactionGame {
   /// Check if move is valid (cell is empty or belongs to player)
   bool isValidMove(int r, int c, int playerId) {
     if (r < 0 || r >= rowCount || c < 0 || c >= colCount) return false;
-    if (gameState.isGameFinished()) return false;
+    if (isGameFinished()) return false;
     Cell cell = board[r][c];
     return cell.isEmpty() || cell.ownerId == playerId;
   }
@@ -93,14 +121,9 @@ class ChainReactionGame {
   /// Makes a move for the current player at the given cell.
   /// Returns true if the move was successful.
   bool makeMove(int r, int c) {
-    // Always ensure the current player is active before allowing a move
-    int safety = 0;
-    while (!gameState.isGameFinished() && !gameState.currentPlayer.isActive && safety < players.length) {
-      _nextTurn();
-      safety++;
-    }
-    if (gameState.isGameFinished()) return false;
-    final player = gameState.currentPlayer;
+    _ensureActivePlayer();
+    if (isGameFinished()) return false;
+    final player = currentPlayer;
     if (!isValidMove(r, c, player.id)) return false;
     board[r][c].addOrb(player.id);
     _handleExplosions(r, c, player.id);
@@ -110,21 +133,11 @@ class ChainReactionGame {
     if (movesMade >= players.length) {
       _checkEliminations();
       _checkWinCondition();
-      // After eliminations and win check, always ensure the current player is active
-      safety = 0;
-      while (!gameState.isGameFinished() && !gameState.currentPlayer.isActive && safety < players.length) {
-        _nextTurn();
-        safety++;
-      }
+      _ensureActivePlayer(); // ensure after eliminations
     }
-    if (!gameState.isGameFinished()) {
-      _nextTurn();
-      // After advancing, ensure the new current player is active
-      safety = 0;
-      while (!gameState.isGameFinished() && !gameState.currentPlayer.isActive && safety < players.length) {
-        _nextTurn();
-        safety++;
-      }
+    if (!isGameFinished()) {
+      nextPlayer();
+      _ensureActivePlayer(); // ensure after advancing turn
     }
     return true;
   }
@@ -223,9 +236,10 @@ class ChainReactionGame {
 
   /// Checks and eliminates players with 0 orbs.
   void _checkEliminations() {
-    if (movesMade < players.length) return;
+    if (movesMade < players.length) return; // Don't eliminate in the first round
     for (var player in players) {
-      if (!playerAlive(player.id)) {
+      // Only eliminate if player has played at least once
+      if (!playerAlive(player.id) && playersMoved.contains(player.id)) {
         player.eliminate();
       }
     }
@@ -235,18 +249,8 @@ class ChainReactionGame {
   void _checkWinCondition() {
     final winner = getWinnerId();
     if (winner != null) {
-      gameState.finishGame(winner);
+      finishGame(winner);
     }
-  }
-
-  /// Advances to the next active player's turn.
-  void _nextTurn() {
-    int attempts = 0;
-    int maxAttempts = players.length;
-    do {
-      gameState.nextPlayer();
-      attempts++;
-    } while (!gameState.currentPlayer.isActive && attempts < maxAttempts);
   }
 
   /// Get cell at position
@@ -291,40 +295,19 @@ class ChainReactionGame {
     return players.where((player) => !player.isActive).toList();
   }
 
-  /// Reset the game to initial state
-  void resetGame() {
-    // Reset board
-    for (int r = 0; r < rowCount; r++) {
-      for (int c = 0; c < colCount; c++) {
-        board[r][c].reset();
-      }
-    }
-    // Reset players
-    for (var player in players) {
-      player.reset();
-    }
-    // Reset game state
-    gameState.reset();
-    // Reset counters
-    movesMade = 0;
-    playersMoved.clear();
-    // Reset orb counts
-    _initializePlayerOrbCounts();
-  }
-
   /// Get current game status
   String getGameStatus() {
-    if (gameState.isGameFinished()) {
+    if (isGameFinished()) {
       Player? winner = getWinner();
       return winner != null ? 'Game Over - ${winner.color} Wins!' : 'Game Over';
     } else {
-      return 'Current Player: ${gameState.currentPlayer.color}';
+      return 'Current Player: ${currentPlayer.color}';
     }
   }
 
   /// Check if it's a specific player's turn
   bool isPlayerTurn(int playerId) {
-    return gameState.currentPlayer.id == playerId;
+    return currentPlayer.id == playerId;
   }
 
   /// Get total moves made
@@ -340,7 +323,7 @@ class ChainReactionGame {
   /// Prints the current state of the board (for debugging/demo).
   void printBoard() {
     print('=== Chain Reaction Board ===');
-    print('Current Player: ${gameState.currentPlayer.color}');
+    print('Current Player: ${currentPlayer.color}');
     print('Moves Made: $movesMade');
     print('');
     for (int r = 0; r < rowCount; r++) {
@@ -374,5 +357,13 @@ class ChainReactionGame {
         'maxCapacity': cell.maxCapacity,
       }).toList()
     ).toList();
+  }
+
+  void _ensureActivePlayer() {
+    int safety = 0;
+    while (!isGameFinished() && !currentPlayer.isActive && safety < players.length) {
+      nextPlayer();
+      safety++;
+    }
   }
 } 

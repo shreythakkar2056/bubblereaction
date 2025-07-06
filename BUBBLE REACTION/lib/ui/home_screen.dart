@@ -97,47 +97,87 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSpacing: 14,
                 crossAxisSpacing: 14,
                 physics: const NeverScrollableScrollPhysics(),
-                children: List.generate(7, (i) {
-                  int playerNum = i + 2;
-                  bool selected = _selectedPlayers == playerNum;
-                  return GestureDetector(
+                children: [
+                  GestureDetector(
                     onTap: () {
-                      setState(() {
-                        _selectedPlayers = playerNum;
-                      });
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('AI Mode'),
+                          content: const Text('Coming soon!'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: selected ? accent : cardBg,
+                        color: Colors.grey[900],
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: selected ? accent : Colors.white24,
-                          width: selected ? 2.5 : 1.5,
+                          color: Colors.white24,
+                          width: 1.5,
                         ),
-                        boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                  color: accent.withOpacity(0.5),
-                                  blurRadius: 16,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : [],
                       ),
-                      child: Center(
+                      child: const Center(
                         child: Text(
-                          '$playerNum',
+                          'AI',
                           style: TextStyle(
-                            color: selected ? Colors.black : Colors.white,
+                            color: Color(0xFF00E6FB),
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                           ),
                         ),
                       ),
                     ),
-                  );
-                }),
+                  ),
+                  ...List.generate(7, (i) {
+                    int playerNum = i + 2;
+                    bool selected = _selectedPlayers == playerNum;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedPlayers = playerNum;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: selected ? accent : cardBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected ? accent : Colors.white24,
+                            width: selected ? 2.5 : 1.5,
+                          ),
+                          boxShadow: selected
+                              ? [
+                                  BoxShadow(
+                                    color: accent.withOpacity(0.5),
+                                    blurRadius: 16,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$playerNum',
+                            style: TextStyle(
+                              color: selected ? Colors.black : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ),
               const SizedBox(height: 32),
               Row(
