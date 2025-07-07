@@ -3,8 +3,8 @@ import 'cell.dart';
 
 /// Main controller for the Chain Reaction game logic.
 class ChainReactionGame {
-  static const int rows = 9;
-  static const int cols = 6;
+  static const int rows = 10;
+  static const int cols = 7;
   late List<List<Cell>> board;
   final List<Player> players;
 

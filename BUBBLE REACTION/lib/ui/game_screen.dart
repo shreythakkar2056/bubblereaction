@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../game_logic/chain_reaction_game.dart';
+import 'fancy_orb.dart';
 
 class GameScreen extends StatefulWidget {
   final int playerCount;
@@ -249,129 +250,92 @@ class _GameScreenState extends State<GameScreen> {
                 ),
                 child: AspectRatio(
                   aspectRatio: _game.colCount / _game.rowCount,
-                  child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _game.colCount,
-                      crossAxisSpacing: 3,
-                      mainAxisSpacing: 3,
-                    ),
-                    itemCount: _game.rowCount * _game.colCount,
-                    itemBuilder: (context, index) {
-                      final row = index ~/ _game.colCount;
-                      final col = index % _game.colCount;
-                      final playerId = _game.getCellPlayer(row, col);
-                      final orbCount = _game.getCellCount(row, col);
-                      return GestureDetector(
-                        onTap: _game.getWinnerId() == null &&
-                               (playerId == null || playerId == currentPlayer.id) &&
-                               _game.currentPlayer.isActive
-                            ? () => _handleCellTap(row, col)
-                            : null,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white12,
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Center(
-                            child: () {
-                              if (orbCount == 1) {
-                                // Centered single orb
-                                return Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              } else if (orbCount == 2) {
-                                // Two orbs side by side
-                                return Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: List.generate(2, (i) => Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                                    child: Container(
-                                      width: 14,
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )),
-                                );
-                              } else if (orbCount == 3) {
-                                // Triangle: 1 on top, 2 on bottom
-                                return Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      margin: const EdgeInsets.only(bottom: 2),
-                                      decoration: BoxDecoration(
-                                        color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Row(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cellWidth = (constraints.maxWidth - (_game.colCount - 1) * 3) / _game.colCount;
+                      final cellHeight = (constraints.maxHeight - (_game.rowCount - 1) * 3) / _game.rowCount;
+                      final cellSize = cellWidth < cellHeight ? cellWidth : cellHeight;
+                      final orbSize = cellSize * 0.36;
+                      return GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: _game.colCount,
+                          crossAxisSpacing: 3,
+                          mainAxisSpacing: 3,
+                        ),
+                        itemCount: _game.rowCount * _game.colCount,
+                        itemBuilder: (context, index) {
+                          final row = index ~/ _game.colCount;
+                          final col = index % _game.colCount;
+                          final playerId = _game.getCellPlayer(row, col);
+                          final orbCount = _game.getCellCount(row, col);
+                          return GestureDetector(
+                            onTap: _game.getWinnerId() == null &&
+                                   (playerId == null || playerId == currentPlayer.id) &&
+                                   _game.currentPlayer.isActive
+                                ? () => _handleCellTap(row, col)
+                                : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white12,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: () {
+                                  if (orbCount == 1) {
+                                    // Centered single orb
+                                    return FancyOrb(
+                                      color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                      size: orbSize,
+                                    );
+                                  } else if (orbCount == 2) {
+                                    // Two orbs side by side
+                                    return Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       mainAxisSize: MainAxisSize.min,
                                       children: List.generate(2, (i) => Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                                        child: Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: playerId != null ? _playerColors[playerId].withOpacity(0.5) : Colors.white24,
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
+                                        padding: EdgeInsets.symmetric(horizontal: orbSize * 0.12),
+                                        child: FancyOrb(
+                                          color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                          size: orbSize,
                                         ),
                                       )),
-                                    ),
-                                  ],
-                                );
-                              } else {
-                                return null;
-                              }
-                            }(),
-                          ),
-                        ),
+                                    );
+                                  } else if (orbCount == 3) {
+                                    // Triangle: 1 on top, 2 on bottom
+                                    return Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        FancyOrb(
+                                          color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                          size: orbSize,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: List.generate(2, (i) => Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: orbSize * 0.08),
+                                            child: FancyOrb(
+                                              color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                              size: orbSize,
+                                            ),
+                                          )),
+                                        ),
+                                      ],
+                                    );
+                                  } else {
+                                    return null;
+                                  }
+                                }(),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
