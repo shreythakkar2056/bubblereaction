@@ -3,7 +3,7 @@ import '../game_logic/chain_reaction_game.dart';
 
 class GameScreen extends StatefulWidget {
   final int playerCount;
-  const GameScreen({Key? key, required this.playerCount}) : super(key: key);
+  const GameScreen({super.key, required this.playerCount});
 
   @override
   State<GameScreen> createState() => _GameScreenState();

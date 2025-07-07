@@ -13,7 +13,7 @@ void main() async {
 }
 
 class BubbleReactionApp extends StatelessWidget {
-  const BubbleReactionApp({Key? key}) : super(key: key);
+  const BubbleReactionApp({super.key});
 
   @override
   Widget build(BuildContext context) {
