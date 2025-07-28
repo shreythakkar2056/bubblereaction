@@ -17,7 +17,7 @@ class _FancyOrbState extends State<FancyOrb> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
   }
@@ -27,7 +27,7 @@ class _FancyOrbState extends State<FancyOrb> with SingleTickerProviderStateMixin
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        final scale = 0.92 + 0.13 * math.sin(_controller.value * 2 * math.pi);
+        final scale = 0.97 + 0.1 * math.sin(_controller.value * 2 * math.pi);
         final rotation = _controller.value * 2 * math.pi;
         return Transform.rotate(
           angle: rotation,
@@ -44,9 +44,9 @@ class _FancyOrbState extends State<FancyOrb> with SingleTickerProviderStateMixin
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              widget.color.withOpacity(0.95),
-              widget.color.withOpacity(0.7),
-              Colors.black.withOpacity(0.5),
+              widget.color.withAlpha((0.95 * 255).round()),
+              widget.color.withAlpha((0.7 * 255).round()),
+              Colors.black.withAlpha((0.5 * 255).round()),
             ],
             stops: const [0.0, 0.7, 1.0],
             center: const Alignment(-0.3, -0.3),
@@ -54,15 +54,15 @@ class _FancyOrbState extends State<FancyOrb> with SingleTickerProviderStateMixin
           ),
           boxShadow: [
             BoxShadow(
-              color: widget.color.withOpacity(0.85),
-              blurRadius: 24,
-              spreadRadius: 2,
+              color: widget.color.withAlpha((0.35 * 255).round()),
+              blurRadius: 10,
+              spreadRadius: 1,
               offset: const Offset(0, 0),
             ),
             BoxShadow(
-              color: widget.color.withOpacity(0.4),
-              blurRadius: 40,
-              spreadRadius: 8,
+              color: widget.color.withAlpha((0.18 * 255).round()),
+              blurRadius: 24,
+              spreadRadius: 4,
               offset: const Offset(0, 0),
             ),
           ],
@@ -73,7 +73,7 @@ class _FancyOrbState extends State<FancyOrb> with SingleTickerProviderStateMixin
             width: widget.size * 0.18,
             height: widget.size * 0.12,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withAlpha((0.13 * 255).round()),
               shape: BoxShape.circle,
             ),
           ),

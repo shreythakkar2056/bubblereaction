@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: Colors.black.withAlpha((0.25 * 255).round()),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 1.1,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withAlpha((0.3 * 255).round()),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'STRATEGIC CHAIN REACTION',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withAlpha((0.7 * 255).round()),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 1.2,
@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'PLAYERS',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withAlpha((0.85 * 255).round()),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.1,
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: accent.withOpacity(0.5),
+                                    color: accent.withAlpha((0.5 * 255).round()),
                                     blurRadius: 16,
                                     spreadRadius: 1,
                                   ),
@@ -196,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       'Dominate the board through strategic bubble placement. Create explosive chain reactions to eliminate opponents. Only the strongest player survives.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withAlpha((0.8 * 255).round()),
                         fontSize: 14,
                         height: 1.4,
                       ),

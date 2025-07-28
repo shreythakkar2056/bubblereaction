@@ -15,6 +15,9 @@ class _GameScreenState extends State<GameScreen> {
   late List<Color> _playerColors;
   late List<String> _playerNames;
 
+  int _pendingMoveRow = -1;
+  int _pendingMoveCol = -1;
+
   @override
   void initState() {
     super.initState();
@@ -62,28 +65,28 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleCellTap(int row, int col) {
+    _game.makeMove(row, col);
     setState(() {
-      _game.makeMove(row, col);
+      _pendingMoveRow = -1;
+      _pendingMoveCol = -1;
     });
     if (_game.getWinnerId() != null) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Game Over'),
-            content: Text('${_playerNames[_game.getWinnerId()!]} wins!'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Back to Home'),
-              ),
-            ],
-          ),
-        );
-      });
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Game Over'),
+          content: Text('${_playerNames[_game.getWinnerId()!]} wins!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -103,14 +106,14 @@ class _GameScreenState extends State<GameScreen> {
           boxShadow: isCurrent && !isEliminated
               ? [
                   BoxShadow(
-                    color: _playerColors[playerIdx].withOpacity(0.7),
+                    color: _playerColors[playerIdx].withAlpha((0.7 * 255).round()),
                     blurRadius: 12,
                     spreadRadius: 1,
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withAlpha((0.15 * 255).round()),
                     blurRadius: 4,
                   ),
                 ],
@@ -135,7 +138,7 @@ class _GameScreenState extends State<GameScreen> {
             Text(
               '$orbCount',
               style: TextStyle(
-                color: isEliminated ? Colors.grey : Colors.white.withOpacity(0.85),
+                color: isEliminated ? Colors.grey : Colors.white.withAlpha((0.85 * 255).round()),
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -202,8 +205,8 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final currentPlayer = _game.currentPlayer;
-    final gridBorder = _playerColors[currentPlayer.id].withOpacity(0.7);
-    final gridShadow = _playerColors[currentPlayer.id].withOpacity(0.25);
+    final gridBorder = _playerColors[currentPlayer.id].withAlpha((0.7 * 255).round());
+    final gridShadow = _playerColors[currentPlayer.id].withAlpha((0.25 * 255).round());
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -256,86 +259,91 @@ class _GameScreenState extends State<GameScreen> {
                       final cellHeight = (constraints.maxHeight - (_game.rowCount - 1) * 3) / _game.rowCount;
                       final cellSize = cellWidth < cellHeight ? cellWidth : cellHeight;
                       final orbSize = cellSize * 0.36;
-                      return GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: _game.colCount,
-                          crossAxisSpacing: 3,
-                          mainAxisSpacing: 3,
-                        ),
-                        itemCount: _game.rowCount * _game.colCount,
-                        itemBuilder: (context, index) {
-                          final row = index ~/ _game.colCount;
-                          final col = index % _game.colCount;
-                          final playerId = _game.getCellPlayer(row, col);
-                          final orbCount = _game.getCellCount(row, col);
-                          return GestureDetector(
-                            onTap: _game.getWinnerId() == null &&
-                                   (playerId == null || playerId == currentPlayer.id) &&
-                                   _game.currentPlayer.isActive
-                                ? () => _handleCellTap(row, col)
-                                : null,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.18),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.white12,
-                                  width: 1.2,
-                                ),
-                              ),
-                              child: Center(
-                                child: () {
-                                  if (orbCount == 1) {
-                                    // Centered single orb
-                                    return FancyOrb(
-                                      color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                      size: orbSize,
-                                    );
-                                  } else if (orbCount == 2) {
-                                    // Two orbs side by side
-                                    return Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: List.generate(2, (i) => Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: orbSize * 0.12),
-                                        child: FancyOrb(
+                      return Stack(
+                        children: [
+                          // The game grid
+                          GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: _game.colCount,
+                              crossAxisSpacing: 3,
+                              mainAxisSpacing: 3,
+                            ),
+                            itemCount: _game.rowCount * _game.colCount,
+                            itemBuilder: (context, index) {
+                              final row = index ~/ _game.colCount;
+                              final col = index % _game.colCount;
+                              final playerId = _game.getCellPlayer(row, col);
+                              final orbCount = _game.getCellCount(row, col);
+                              return GestureDetector(
+                                onTap: _game.getWinnerId() == null &&
+                                       (playerId == null || playerId == currentPlayer.id) &&
+                                       _game.currentPlayer.isActive
+                                    ? () => _handleCellTap(row, col)
+                                    : null,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withAlpha((0.18 * 255).round()),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.white12,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: () {
+                                      if (orbCount == 1) {
+                                        // Centered single orb
+                                        return FancyOrb(
                                           color: playerId != null ? _playerColors[playerId] : Colors.white,
                                           size: orbSize,
-                                        ),
-                                      )),
-                                    );
-                                  } else if (orbCount == 3) {
-                                    // Triangle: 1 on top, 2 on bottom
-                                    return Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        FancyOrb(
-                                          color: playerId != null ? _playerColors[playerId] : Colors.white,
-                                          size: orbSize,
-                                        ),
-                                        Row(
+                                        );
+                                      } else if (orbCount == 2) {
+                                        // Two orbs side by side
+                                        return Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           mainAxisSize: MainAxisSize.min,
                                           children: List.generate(2, (i) => Padding(
-                                            padding: EdgeInsets.symmetric(horizontal: orbSize * 0.08),
+                                            padding: EdgeInsets.symmetric(horizontal: orbSize * 0.12),
                                             child: FancyOrb(
                                               color: playerId != null ? _playerColors[playerId] : Colors.white,
                                               size: orbSize,
                                             ),
                                           )),
-                                        ),
-                                      ],
-                                    );
-                                  } else {
-                                    return null;
-                                  }
-                                }(),
-                              ),
-                            ),
-                          );
-                        },
+                                        );
+                                      } else if (orbCount == 3) {
+                                        // Triangle: 1 on top, 2 on bottom
+                                        return Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            FancyOrb(
+                                              color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                              size: orbSize,
+                                            ),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: List.generate(2, (i) => Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: orbSize * 0.08),
+                                                child: FancyOrb(
+                                                  color: playerId != null ? _playerColors[playerId] : Colors.white,
+                                                  size: orbSize,
+                                                ),
+                                              )),
+                                            ),
+                                          ],
+                                        );
+                                      } else {
+                                        return null;
+                                      }
+                                    }(),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       );
                     },
                   ),

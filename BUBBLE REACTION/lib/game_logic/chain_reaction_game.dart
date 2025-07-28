@@ -18,6 +18,16 @@ class ChainReactionGame {
   int currentPlayerIndex = 0;
   bool _isFinished = false;
 
+  /// Callback for UI to listen to cell explosion events
+  void Function(int r, int c, int playerId, List<List<int>> directions)? onCellExplode;
+
+  /// Step mode for UI-controlled explosion pacing
+  bool stepMode = false;
+  final List<_PendingExplosion> _pendingExplosions = [];
+
+  /// Explosion log for UI animation replay
+  final List<ExplosionLogEntry> explosionLog = [];
+
   ChainReactionGame({
     int? rowsOverride,
     int? colsOverride,
@@ -125,6 +135,7 @@ class ChainReactionGame {
     if (isGameFinished()) return false;
     final player = currentPlayer;
     if (!isValidMove(r, c, player.id)) return false;
+    explosionLog.clear(); // Clear log at start of move
     board[r][c].addOrb(player.id);
     _handleExplosions(r, c, player.id);
     _updatePlayerOrbCounts();
@@ -144,36 +155,50 @@ class ChainReactionGame {
 
   /// Handle chain reaction explosions
   void _handleExplosions(int r, int c, int playerId) {
-    _explode(r, c, playerId);
+    if (stepMode) {
+      _pendingExplosions.add(_PendingExplosion(r, c, playerId));
+      if (_pendingExplosions.length == 1) {
+        stepExplosion();
+      }
+    } else {
+      _explode(r, c, playerId);
+    }
   }
 
   /// Chain reaction explosion function
   void _explode(int r, int c, int playerId) {
-    if (r < 0 || r >= rowCount || c < 0 || c >= colCount) return;
-    Cell cell = board[r][c];
-    int limit = cell.maxCapacity;
-    if (cell.orbCount <= limit) return;
-    // Cell explodes - remove excess orbs
-    int orbsToDistribute = limit + 1;
-    cell.removeOrbs(orbsToDistribute);
-    // If cell becomes empty, clear owner
-    if (cell.isEmpty()) {
-      cell.clearOwner();
-    }
-    // Spread to neighbors (up, down, left, right)
-    final directions = [
-      [-1, 0], // up
-      [1, 0],  // down
-      [0, -1], // left
-      [0, 1]   // right
-    ];
-    for (var direction in directions) {
-      int newR = r + direction[0];
-      int newC = c + direction[1];
-      if (newR >= 0 && newR < rowCount && newC >= 0 && newC < colCount) {
-        board[newR][newC].addOrb(playerId);
-        // Recursively explode if needed
-        _explode(newR, newC, playerId);
+    if (stepMode) {
+      // In step mode, enqueue and wait for UI to call stepExplosion
+      _pendingExplosions.add(_PendingExplosion(r, c, playerId));
+      if (_pendingExplosions.length == 1) {
+        stepExplosion();
+      }
+    } else {
+      // Normal recursive explosion
+      if (r < 0 || r >= rowCount || c < 0 || c >= colCount) return;
+      Cell cell = board[r][c];
+      int limit = cell.maxCapacity;
+      if (cell.orbCount <= limit) return;
+      int orbsToDistribute = limit + 1;
+      cell.removeOrbs(orbsToDistribute);
+      if (cell.isEmpty()) {
+        cell.clearOwner();
+      }
+      final directions = [
+        [-1, 0], [1, 0], [0, -1], [0, 1]
+      ];
+      // Log this explosion for animation replay
+      explosionLog.add(ExplosionLogEntry(r, c, playerId, List.from(directions)));
+      if (onCellExplode != null) {
+        onCellExplode!(r, c, playerId, directions);
+      }
+      for (var direction in directions) {
+        int newR = r + direction[0];
+        int newC = c + direction[1];
+        if (newR >= 0 && newR < rowCount && newC >= 0 && newC < colCount) {
+          board[newR][newC].addOrb(playerId);
+          _explode(newR, newC, playerId);
+        }
       }
     }
   }
@@ -366,4 +391,55 @@ class ChainReactionGame {
       safety++;
     }
   }
+
+  /// Call this to process the next explosion step in step mode
+  void stepExplosion() {
+    if (_pendingExplosions.isNotEmpty) {
+      final exp = _pendingExplosions.removeAt(0);
+      _processExplosion(exp.r, exp.c, exp.playerId);
+    }
+  }
+
+  void _processExplosion(int r, int c, int playerId) {
+    // Same as _explode, but does not recurse in step mode
+    if (r < 0 || r >= rowCount || c < 0 || c >= colCount) return;
+    Cell cell = board[r][c];
+    int limit = cell.maxCapacity;
+    if (cell.orbCount <= limit) return;
+    // Cell explodes - remove excess orbs
+    int orbsToDistribute = limit + 1;
+    cell.removeOrbs(orbsToDistribute);
+    if (cell.isEmpty()) {
+      cell.clearOwner();
+    }
+    final directions = [
+      [-1, 0], [1, 0], [0, -1], [0, 1]
+    ];
+    if (onCellExplode != null) {
+      onCellExplode!(r, c, playerId, directions);
+    }
+    // In step mode, do not immediately add orbs to neighbors; UI will call stepExplosion for each
+    if (!stepMode) {
+      for (var direction in directions) {
+        int newR = r + direction[0];
+        int newC = c + direction[1];
+        if (newR >= 0 && newR < rowCount && newC >= 0 && newC < colCount) {
+          board[newR][newC].addOrb(playerId);
+          _explode(newR, newC, playerId);
+        }
+      }
+    }
+  }
+}
+
+// Helper class for pending explosions
+class _PendingExplosion {
+  final int r, c, playerId;
+  _PendingExplosion(this.r, this.c, this.playerId);
+}
+
+class ExplosionLogEntry {
+  final int r, c, playerId;
+  final List<List<int>> directions;
+  ExplosionLogEntry(this.r, this.c, this.playerId, this.directions);
 } 
