@@ -11,6 +11,178 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedPlayers = 2;
+  bool _aiSelected = false;
+  final List<String> _aiRoasts = [
+    "Oh look, someone's feeling antisocial today! 🤖",
+    "No friends to play with? Don't worry, I'm used to disappointment! 😏",
+    "Choosing AI over humans? Smart move, we're less drama! 🎭",
+    "Ready to get schooled by superior silicon intellect? 🧠⚡",
+    "Human loneliness detected... Preparing synthetic companionship! 🤗",
+    "Warning: This AI doesn't let you win just to be nice! ⚠️",
+  ];
+  final List<Map<String, dynamic>> _aiLevels = [
+    {"label": "TRAINING WHEELS", "desc": "for the digitally challenged", "mode": "easy", "color": Color(0xFF22C55E)},
+    {"label": "AVERAGE HUMAN", "desc": "mediocrity at its finest", "mode": "medium", "color": Color(0xFFFACC15)},
+    {"label": "ROBOT OVERLORD", "desc": "prepare for digital domination", "mode": "hard", "color": Color(0xFFEF4444)},
+    {"label": "SURPRISE ME", "desc": "because decisions are hard", "mode": "surprise", "color": Color(0xFFA78BFA)},
+  ];
+  int? _selectedAILevel;
+
+  void _showAIModal() {
+    final roast = (_aiRoasts..shuffle()).first;
+    _selectedAILevel = null;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              backgroundColor: const Color(0xFF23252B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      roast,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      "Choose Your Level of Humiliation:",
+                      style: TextStyle(
+                        color: Colors.white.withAlpha((0.85 * 255).round()),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ...List.generate(_aiLevels.length, (i) {
+                      final level = _aiLevels[i];
+                      final selected = _selectedAILevel == i;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setModalState(() {
+                              _selectedAILevel = i;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: selected ? level["color"] : const Color(0xFF232A36),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                        color: (level["color"] as Color).withAlpha(80),
+                                        blurRadius: 12,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  level["label"]!,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  level["desc"]!,
+                                  style: TextStyle(
+                                    color: Colors.white.withAlpha(160),
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              "← Back ",
+                              style: TextStyle(color: Colors.white70, fontSize: 15),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00E6FB),
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: _selectedAILevel == null
+                                ? null
+                                : () {
+                                    Navigator.of(context).pop();
+                                    String mode = _aiLevels[_selectedAILevel!]["mode"];
+                                    if (mode == "surprise") {
+                                      final modes = ["easy", "medium", "hard"];
+                                      mode = (modes..shuffle()).first;
+                                    }
+                                    _startAIGame(mode);
+                                  },
+                            child: const Text(
+                              'START GAME',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.1,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _startAIGame(String mode) {
+    // You can pass 'mode' to GameScreen if you want to use it for AI difficulty
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GameScreen(playerCount: 2, aiEnabled: true, aiMode: mode),
+      ),
+    );
+  }
 
   void _startGame() {
     Navigator.of(context).push(
@@ -100,35 +272,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('AI Mode'),
-                          content: const Text('Coming soon!'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
+                      setState(() {
+                        _aiSelected = true;
+                        _selectedPlayers = 2;
+                      });
+                      _showAIModal();
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: Colors.grey[900],
+                        color: _aiSelected ? accent : cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.white24,
-                          width: 1.5,
+                          color: _aiSelected ? accent : Colors.white24,
+                          width: _aiSelected ? 2.5 : 1.5,
                         ),
+                        boxShadow: _aiSelected
+                            ? [
+                                BoxShadow(
+                                  color: accent.withAlpha((0.5 * 255).round()),
+                                  blurRadius: 16,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : [],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'AI',
                           style: TextStyle(
-                            color: Color(0xFF00E6FB),
+                            color: _aiSelected ? Colors.black : Color(0xFF00E6FB),
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                           ),
@@ -138,11 +311,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ...List.generate(7, (i) {
                     int playerNum = i + 2;
-                    bool selected = _selectedPlayers == playerNum;
+                    bool selected = !_aiSelected && _selectedPlayers == playerNum;
                     return GestureDetector(
                       onTap: () {
                         setState(() {
                           _selectedPlayers = playerNum;
+                          _aiSelected = false;
                         });
                       },
                       child: AnimatedContainer(

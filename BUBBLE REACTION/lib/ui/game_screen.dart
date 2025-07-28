@@ -4,7 +4,9 @@ import 'fancy_orb.dart';
 
 class GameScreen extends StatefulWidget {
   final int playerCount;
-  const GameScreen({super.key, required this.playerCount});
+  final bool aiEnabled;
+  final String? aiMode;
+  const GameScreen({super.key, required this.playerCount, this.aiEnabled = false, this.aiMode});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -14,9 +16,9 @@ class _GameScreenState extends State<GameScreen> {
   late ChainReactionGame _game;
   late List<Color> _playerColors;
   late List<String> _playerNames;
+  bool get aiEnabled => widget.aiEnabled;
+  String get aiMode => widget.aiMode ?? "easy";
 
-  int _pendingMoveRow = -1;
-  int _pendingMoveCol = -1;
 
   @override
   void initState() {
@@ -66,10 +68,7 @@ class _GameScreenState extends State<GameScreen> {
 
   void _handleCellTap(int row, int col) {
     _game.makeMove(row, col);
-    setState(() {
-      _pendingMoveRow = -1;
-      _pendingMoveCol = -1;
-    });
+    setState(() {});
     if (_game.getWinnerId() != null) {
       showDialog(
         context: context,
@@ -87,7 +86,75 @@ class _GameScreenState extends State<GameScreen> {
           ],
         ),
       );
+      return;
     }
+    // If AI mode is enabled and it's AI's turn, make AI move
+    if (aiEnabled && _game.currentPlayer.id == 1 && _game.currentPlayer.isActive) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _makeAIMove();
+      });
+    }
+  }
+
+  void _makeAIMove() {
+    // Find all valid moves for AI (playerId == 1)
+    List<List<int>> validMoves = [];
+    for (int r = 0; r < _game.rowCount; r++) {
+      for (int c = 0; c < _game.colCount; c++) {
+        if (_game.isValidMove(r, c, 1)) {
+          validMoves.add([r, c]);
+        }
+      }
+    }
+    if (validMoves.isNotEmpty) {
+      List<List<int>> movesToPick = validMoves;
+      if (aiMode == "easy") {
+        // Pick a random move
+        movesToPick = validMoves;
+      } else if (aiMode == "medium") {
+        // Prefer moves adjacent to own orbs
+        movesToPick = validMoves.where((move) {
+          int r = move[0], c = move[1];
+          for (var d in [
+            [-1, 0], [1, 0], [0, -1], [0, 1]
+          ]) {
+            int nr = r + d[0], nc = c + d[1];
+            if (nr >= 0 && nr < _game.rowCount && nc >= 0 && nc < _game.colCount) {
+              if (_game.getCellPlayer(nr, nc) == 1) return true;
+            }
+          }
+          return false;
+        }).toList();
+        if (movesToPick.isEmpty) movesToPick = validMoves;
+      } else if (aiMode == "hard") {
+        // Prefer cells with highest orb count (close to explosion)
+        movesToPick = List.from(validMoves);
+        movesToPick.sort((a, b) => _game.getCellCount(b[0], b[1]).compareTo(_game.getCellCount(a[0], a[1])));
+        movesToPick = movesToPick.take(3).toList(); // Pick among top 3
+      }
+      final move = movesToPick[(movesToPick.length * (DateTime.now().millisecondsSinceEpoch % 1000) / 1000).floor()];
+      _game.makeMove(move[0], move[1]);
+      setState(() {});
+      if (_game.getWinnerId() != null) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Game Over'),
+            content: Text('${_playerNames[_game.getWinnerId()!]} wins!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Back to Home'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  // Remove misplaced closing bracket here so the rest of the class is included
   }
 
   Widget _buildPlayerCard(int playerIdx, Alignment alignment) {
